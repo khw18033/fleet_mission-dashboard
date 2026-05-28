@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: rssi-collector
+  namespace: centralized
+  labels:
+    app: rssi-collector
+spec:
+  selector:
+    matchLabels:
+      app: rssi-collector
+  template:
+    metadata:
+      labels:
+        app: rssi-collector
+    spec:
+      nodeSelector:
+        node-role: edge
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: rssi-collector
+          image: jny123/rssi-collector:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN", "NET_RAW"]   # iw scan 권한
+          env:
+            - name: STATION_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: SCAN_INTERFACE
+              value: "wlan1"
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: fleet-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: fleet-config
+                  key: REDIS_PORT
+          resources:
+            requests:
+              cpu: 30m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: handover-controller
+  namespace: centralized
+  labels:
+    app: handover-controller
+spec:
+  selector:
+    matchLabels:
+      app: handover-controller
+  template:
+    metadata:
+      labels:
+        app: handover-controller
+    spec:
+      nodeSelector:
+        node-role: edge
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: handover-controller
+          image: jny123/handover-controller:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: STATION_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: fleet-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: fleet-config
+                  key: REDIS_PORT
+            - name: MQTT_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: fleet-config
+                  key: MQTT_HOST
+            - name: MQTT_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: fleet-config
+                  key: MQTT_PORT
+          resources:
+            requests:
+              cpu: 30m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

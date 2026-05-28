@@ -1,0 +1,206 @@
+network:
+  redis_host: central-redis-service
+  redis_port: 6379
+  hub_host: 127.0.0.1
+  hub_port: 30005
+  hub_bind_port: 5000
+  bind_host: 0.0.0.0
+  namespace: centralized
+mqtt:
+  host: mqtt-broker.example.local
+  port: 1883
+  keepalive: 60
+  topic_prefix: fleet
+stations:
+- id: station-a
+  label: 기지국 A
+  node: change-me-node-a
+  scan_interface: wlan1
+  control_interface: wlan0
+- id: station-b
+  label: 기지국 B
+  node: change-me-node-b
+  scan_interface: wlan1
+  control_interface: wlan0
+robot:
+  type: ep01
+  connection_mode: ap
+  default_sn: REPLACE_WITH_ROBOT_SN
+  ap:
+    ssid_prefix: RMEP-
+    password: CHANGE_ME_PASSWORD
+    ssid_to_sn:
+      RMEP-XXXXXX: REPLACE_WITH_ROBOT_SN
+  offline_timeout_sec: 10
+runtime:
+  default_robot_type: ep01
+  default_robot_sn: REPLACE_WITH_ROBOT_SN
+  link_id_prefix: link-
+  node_selector_label: kubernetes.io/hostname
+kubernetes:
+  service_account: central-hub-sa
+  image_pull_policy: Always
+  node_port: 30005
+  node_selectors:
+    central_hub: change-me-central-hub-node
+  dns_policy: ClusterFirstWithHostNet
+  host_network: true
+link:
+  conn_type: ap
+services:
+  link:
+    sensor_frequencies:
+      battery_hz: 1
+      position_hz: 5
+      velocity_hz: 5
+      imu_hz: 2
+      esc_hz: 2
+  rssi:
+    scan_interval_sec: 3
+    ewma_alpha: 0.3
+    redis_ttl_sec: 30
+  handover:
+    rssi_threshold_db: 10
+    hysteresis_db: 3
+    cooldown_sec: 15
+    stable_count: 3
+timeouts:
+  redis_command_wait_sec: 5
+  mission_accept_wait_sec: 10
+images:
+  central_hub: jny123/central-hub:v32
+  link_proxy: jny123/ep01-link:v17
+  nav_worker: jny123/nav-worker:latest
+  vision_worker: jny123/vision-worker:latest
+  redis: redis:7-alpine
+  broadcaster: jny123/edge-broadcaster:v2
+  mission_listener: jny123/mission-listener:v3
+  rssi_collector: jny123/rssi-collector:v1
+  handover_controller: jny123/handover-controller:v1
+  fallback_controller: jny123/fallback-controller:v1
+llm:
+  host: llm.example.local
+  port: 11434
+  model: llama3.2:3b
+  url: http://llm.example.local:11434/api/generate
+  request_timeout_sec: 300
+mission:
+  task_command: 'python -m pip install redis && python -c "import os; exec(os.environ.get(''MISSION_CODE'', ''''))"
+
+    '
+  condition_fields:
+  - robot_type
+  - robot_online
+  - min_battery
+  - max_latency_ms
+mission_spec:
+  targets:
+    chassis:
+      actions:
+      - name: MOVE
+        params:
+        - x
+        - y
+        - speed
+      - name: ROTATE
+        params:
+        - yaw
+        - v_speed
+      - name: STOP
+        params: []
+    actuator:
+      actions:
+      - name: GRIPPER
+        params:
+        - grip
+        - open
+      - name: ARM_MOVE
+        params:
+        - arm_x
+        - arm_y
+    led:
+      actions:
+      - name: SET
+        params:
+        - r
+        - g
+        - b
+        - eff
+    flow:
+      actions:
+      - name: REPEAT
+        params:
+        - times
+        description: body 노드를 N번 반복
+      - name: IF
+        params: []
+        description: 조건이 참이면 then, 거짓이면 else 실행
+      - name: WAIT_EVENT
+        params: []
+        description: 지정 이벤트 발생 시까지 대기
+  events:
+    armor_hit:
+      description: 장갑 타격 감지
+      redis_key: armor
+      fields:
+        id:
+          type: int
+          desc: 1=후방 | 2=전방 | 3=좌측 | 4=우측
+        position:
+          type: select
+          options:
+          - front
+          - back
+          - left
+          - right
+        type:
+          type: int
+          desc: 타격 타입
+    battery_low:
+      description: 배터리 잔량 조건
+      redis_key: battery
+      fields:
+        soc:
+          type: int
+          desc: 배터리 잔량 (%)
+    speed_change:
+      description: 주행 속도 변화
+      redis_key: speed
+      fields:
+        speed:
+          type: float
+        vx:
+          type: float
+        vy:
+          type: float
+    imu_change:
+      description: IMU 가속도 변화
+      redis_key: imu
+      fields:
+        ax:
+          type: float
+        ay:
+          type: float
+        az:
+          type: float
+  condition_ops:
+  - eq
+  - ne
+  - gt
+  - lt
+  - gte
+  - lte
+webui:
+  host: 0.0.0.0
+  port: 8501
+docker:
+  build_contexts:
+    central_hub: .
+    broadcaster: .
+    mission_listener: .
+    link_proxy: apps/brain-ep01/link
+    nav_worker: apps/brain-ep01/tasks/navigation
+    vision_worker: apps/brain-ep01/tasks/vision
+    rssi_collector: .
+    handover_controller: .
+    fallback_controller: .

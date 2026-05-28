@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: task-worker-temp
+  labels:
+    role: mission-worker
+spec:
+  # 1. 로봇 통신을 위해 호스트 네트워크 유지
+  hostNetwork: true
+  
+  # 2. [핵심 수정] 호스트 네트워크 사용 시에도 K8s DNS(CoreDNS)를 사용하도록 설정
+  dnsPolicy: ClusterFirstWithHostNet
+
+  # nodeSelector 값은 코드에서 동적으로 주입합니다.
+  restartPolicy: Never
+  
+  containers:
+  - name: worker-container
+    image: "PENDING"
+    imagePullPolicy: IfNotPresent
+    resources:
+      limits:
+        cpu: "500m"
+        memory: "256Mi"
+    env:
+    - name: REDIS_HOST
+      value: "PENDING"
+    - name: ROBOT_SN
+      value: "PENDING"
+    - name: TASK_ID
+      value: "PENDING"

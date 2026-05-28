@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: edge-broadcaster
+  namespace: centralized
+  labels:
+    app: edge-broadcaster
+spec:
+  selector:
+    matchLabels:
+      app: edge-broadcaster
+  template:
+    metadata:
+      labels:
+        app: edge-broadcaster
+    spec:
+      # edge role 노드에만 배포
+      nodeSelector:
+        node-role: edge
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: broadcaster
+          image: jny123/edge-broadcaster:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: STATION_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName   # 노드 이름을 station_id로 사용
+            - name: MQTT_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: fleet-config
+                  key: MQTT_HOST
+            - name: MQTT_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: fleet-config
+                  key: MQTT_PORT
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

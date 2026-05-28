@@ -1,0 +1,9 @@
+# 핵심 제어 및 통신
+robomaster
+redis
+setuptools==58.2.0
+
+# 수치 계산 및 비전 
+numpy==1.23.5
+opencv-python-headless
+PyYAML  

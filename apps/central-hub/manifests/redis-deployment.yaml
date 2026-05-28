@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: centralized
+spec:
+  ports:
+  - port: 6379
+  selector:
+    app: redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+  namespace: centralized
+spec:
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: change-me-redis-node
+      containers:
+      - name: redis
+        image: redis:alpine
+        ports:
+        - containerPort: 6379
