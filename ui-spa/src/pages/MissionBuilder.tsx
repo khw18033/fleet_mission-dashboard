@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 // ── 블록 타입 정의 ────────────────────────────────────────────────
 type BlockType = 'move' | 'rotate' | 'stop' | 'led' | 'gripper' | 'arm' | 'repeat' | 'if_' | 'wait'
@@ -296,6 +296,33 @@ const PALETTE = [
   { group: '흐름제어', types: ['repeat', 'if_', 'wait'] as BlockType[] },
 ]
 
+// 각 블록이 대응하는 프로토콜 (target, action). /api/mission-spec으로 받은
+// 배포별 액션 문법과 대조해 실제 지원하는 블록만 팔레트에 노출한다.
+const BLOCK_ACTION: Record<BlockType, { target: string; action: string }> = {
+  move:   { target: 'chassis',  action: 'MOVE' },
+  rotate: { target: 'chassis',  action: 'ROTATE' },
+  stop:   { target: 'chassis',  action: 'STOP' },
+  led:    { target: 'led',      action: 'SET' },
+  gripper:{ target: 'actuator', action: 'GRIPPER' },
+  arm:    { target: 'actuator', action: 'ARM_MOVE' },
+  repeat: { target: 'flow',     action: 'REPEAT' },
+  if_:    { target: 'flow',     action: 'IF' },
+  wait:   { target: 'flow',     action: 'WAIT_EVENT' },
+}
+
+// mission_spec.targets 에서 지원하는 "target.action" 집합을 만든다.
+function specActionSet(spec: any): Set<string> | null {
+  const targets = spec?.targets
+  if (!targets || typeof targets !== 'object') return null
+  const set = new Set<string>()
+  for (const [target, def] of Object.entries<any>(targets)) {
+    for (const a of def?.actions || []) {
+      if (a?.name) set.add(`${target}.${a.name}`)
+    }
+  }
+  return set.size ? set : null
+}
+
 export default function MissionBuilder() {
   const [blocks, setBlocks] = useState<Block[]>([])
   const [missionName, setMissionName] = useState('mission-01')
@@ -306,6 +333,29 @@ export default function MissionBuilder() {
   const [deploying, setDeploying] = useState(false)
   const [canvasDragOver, setCanvasDragOver] = useState(false)
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle')
+  // 배포된 로봇의 액션 문법 (허브 config의 mission_spec). 없으면 전체 팔레트 표시.
+  const [actionSet, setActionSet] = useState<Set<string> | null>(null)
+
+  useEffect(() => {
+    fetch('/api/mission-spec')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setActionSet(specActionSet(data?.spec)))
+      .catch(() => setActionSet(null))
+  }, [])
+
+  // 스펙을 못 받으면(standalone UI) 필터하지 않고 전체 노출.
+  const palette = useMemo(() => {
+    if (!actionSet) return PALETTE
+    return PALETTE
+      .map((grp) => ({
+        ...grp,
+        types: grp.types.filter((t) => {
+          const a = BLOCK_ACTION[t]
+          return actionSet.has(`${a.target}.${a.action}`)
+        }),
+      }))
+      .filter((grp) => grp.types.length > 0)
+  }, [actionSet])
 
   const payload = useMemo(() => ({
     mission_name: missionName,
@@ -363,7 +413,7 @@ export default function MissionBuilder() {
     <div className="flex h-full min-h-0 text-[#f4f7fb]">
       <aside className="w-[160px] flex-shrink-0 bg-[#10131a]/90 border-r border-white/10 p-3 overflow-y-auto">
         <div className="text-[11px] font-semibold text-[#9aa2b8] uppercase tracking-[0.24em] mb-3">블록 팔레트</div>
-        {PALETTE.map(group => (
+        {palette.map(group => (
           <div key={group.group} className="mb-4">
             <div className="text-xs text-[#b7bfd0] mb-1.5">{group.group}</div>
             {group.types.map(type => (

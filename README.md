@@ -42,3 +42,7 @@ npm run build      # 산출물: ui-spa/dist
 대시보드는 허브의 `/api/dashboard`(및 `/ws/dashboard`)를 소비합니다. 로봇 텔레메트리는
 [확장 필드 규약](protocol/PROTOCOL.md)을 따르며, `robot.telemetry` 딕셔너리로 임의의
 확장 필드가 전달되므로 로봇 종류가 늘어도 UI는 존재하는 필드만 렌더링합니다.
+
+미션 빌더는 허브의 `/api/mission-spec`(배포된 로봇의 액션 문법)을 불러와, 그 배포가
+지원하는 블록만 팔레트에 노출합니다. 스펙을 받지 못하면(standalone) 전체 팔레트를
+표시합니다. 즉 로봇 종류가 바뀌면 허브 config의 `mission_spec`만 교체하면 됩니다.
