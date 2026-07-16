@@ -475,6 +475,19 @@ async def get_dashboard():
     return _build_dashboard()
 
 
+@app.get("/api/mission-spec")
+async def get_mission_spec():
+    """미션 액션 문법(로봇 액션/이벤트/조건)을 config에서 서빙한다.
+
+    액션 문법을 UI에 하드코딩하지 않고 config.yaml의 mission_spec으로 데이터 주도화해,
+    로봇 종류가 바뀌면 해당 배포의 config만 교체하면 미션 빌더가 그 문법을 따른다.
+    """
+    return {
+        "spec":             cfg.get("mission_spec", {}) or {},
+        "condition_fields": cfg.get("mission.condition_fields", []) or [],
+    }
+
+
 @app.get("/api/redis")
 async def get_redis(key: str = ""):
     if not key:

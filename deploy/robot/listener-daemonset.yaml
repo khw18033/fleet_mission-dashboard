@@ -41,6 +41,16 @@ spec:
                 configMapKeyRef:
                   name: fleet-config
                   key: MQTT_PORT
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: fleet-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: fleet-config
+                  key: REDIS_PORT
             - name: ROBOT_ID
               valueFrom:
                 configMapKeyRef:
