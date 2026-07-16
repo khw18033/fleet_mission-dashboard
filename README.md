@@ -51,3 +51,63 @@ docker build -f apps/brain-ep01/link/Dockerfile -t <registry>/ep01-link:<tag> .
 ```bash
 MOCK_MODE=1 python apps/brain-ep01/link/link_proxy.py
 ```
+
+## k3s 없이 실물 로봇 명령 전달 테스트 (pi5 + 로봇만)
+
+**k3s·허브·MQTT 없이**, 이 브랜치의 `link_text_proxy.py`(표준 라이브러리만)와
+제어용 라즈베리파이(예: pi5) + 로봇만으로 명령 전달을 검증할 수 있습니다.
+robomaster 파이썬 SDK도 필요 없습니다(평문 TCP SDK, 포트 40923 사용).
+
+### 준비 (제어 RPi에서)
+
+1. RoboMaster를 **AP 모드**로 켜면 자체 Wi-Fi `RMEP-xxxxxx`가 뜨고, 접속 시 로봇 IP는
+   고정 `192.168.2.1`입니다. USB Wi-Fi(예: ipTIME)를 로봇 전용으로 붙여 접속하세요:
+
+   ```bash
+   nmcli dev wifi connect RMEP-xxxxxx password <AP비밀번호>   # config.yaml robot.ap.password
+   ping -c2 192.168.2.1                                       # 로봇 응답 확인
+   ```
+
+   (내장 Wi-Fi/이더넷은 그대로 두면 기존 네트워크가 유지됩니다.)
+
+2. 이 파일을 RPi로 복사: `scp apps/brain-ep01/link/link_text_proxy.py <rpi>:/tmp/`
+
+### 방법 A — Redis 없이 직접 실행 (`--exec`)
+
+명령(JSON 1개 또는 배열)을 곧바로 로봇에 전달합니다. 가장 간단한 확인 방법입니다.
+
+```bash
+# LED 초록
+python3 /tmp/link_text_proxy.py --exec '{"target":"led","action":"SET","params":{"r":0,"g":255,"b":0}}'
+
+# 전진 0.3m 후 LED 초록 (배열, delay_sec 지원)
+python3 /tmp/link_text_proxy.py --exec '[
+  {"target":"chassis","action":"MOVE","params":{"x":0.3,"y":0,"speed":0.3},"delay_sec":3},
+  {"target":"led","action":"SET","params":{"r":0,"g":255,"b":0}}
+]'
+```
+
+지원 명령: `chassis`(MOVE/ROTATE/STOP), `led`(SET), `actuator`(GRIPPER/ARM_MOVE).
+
+### 방법 B — 프로토콜 그대로(Redis 명령 큐)
+
+실제 계약(`robot:{SN}:commands` 소비 → `cmd_result`/`status`/`online` 기록)을 검증하려면
+Redis가 하나 필요합니다. RPi에 설치하거나(`sudo apt install redis-server`) 접근 가능한
+아무 Redis를 쓰면 됩니다.
+
+```bash
+# 1) 어댑터 실행 (RPi)
+REDIS_HOST=127.0.0.1 ROBOT_SN=ep01-test ROBOT_IP=192.168.2.1 \
+  python3 /tmp/link_text_proxy.py
+
+# 2) 다른 셸에서 명령 주입 + 결과 확인
+redis-cli RPUSH robot:ep01-test:commands \
+  '{"id":"t1","target":"led","action":"SET","params":{"r":0,"g":0,"b":255}}'
+redis-cli GET   robot:ep01-test:online          # "1"
+redis-cli HGET  robot:ep01-test:status _meta    # {"robot_type":"ep01","schema":1,...}
+redis-cli LRANGE robot:ep01-test:cmd_result 0 -1  # {"id":"t1","status":"ok",...}
+```
+
+`redis-cli`가 없으면 파일 내 `MiniRedis`(표준 라이브러리 RESP 클라이언트)로도 주입할 수
+있습니다. 실검증: 실물 EP01(`RMEP-36ceb5`) + pi5(ipTIME `wlan1`)에서 LED·이동을 A/B 두
+방식 모두 확인했습니다.

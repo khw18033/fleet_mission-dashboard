@@ -11,6 +11,10 @@ trixie) 등 어디서나 바로 돈다. Redis도 내장 RESP 클라이언트로 
   - 텔레메트리: HASH  robot:{SN}:status      (battery, _meta, ...)
   - 생존 신호:  SET   robot:{SN}:online 1 EX <ttl>
 
+실행:
+  python3 link_text_proxy.py                 # Redis 명령 큐 소비 (프로토콜 그대로)
+  python3 link_text_proxy.py --exec '<json>' # Redis 없이 명령을 로봇에 직접 실행(테스트)
+
 환경변수:
   ROBOT_IP    로봇 제어 IP (기본 192.168.2.1, AP 모드 게이트웨이)
   ROBOT_PORT  평문 SDK 포트 (기본 40923)
@@ -23,6 +27,7 @@ import json
 import logging
 import os
 import socket
+import sys
 import threading
 import time
 
@@ -227,7 +232,33 @@ def handle(rds, robot, cmd):
         ack(rds, cmd, "error", str(e))
 
 
+def exec_direct(cmds_json):
+    """Redis 없이 명령을 로봇에 직접 실행 (k3s/redis 없이 pi5+로봇만으로 테스트).
+
+    cmds_json: 명령 1개(dict) 또는 여러 개(list). 각 명령을 번역·전송하고 결과를 출력.
+    """
+    data = json.loads(cmds_json)
+    cmds = data if isinstance(data, list) else [data]
+    robot = RobotText(ROBOT_IP, ROBOT_PORT)
+    for cmd in cmds:
+        target = cmd.get("target", ""); action = cmd.get("action", "")
+        lines = translate(target, action, cmd.get("params", {}) or {})
+        if lines is None:
+            print(f"[SKIP] 미지원: {target}.{action}"); continue
+        for line in lines:
+            resp = robot.send(line)
+            print(f"[OK] {target}.{action} -> [{line}] resp={resp}")
+        delay = float(cmd.get("delay_sec", 0) or 0)
+        if delay > 0:
+            time.sleep(delay)
+
+
 def main():
+    if "--exec" in sys.argv:
+        i = sys.argv.index("--exec")
+        exec_direct(sys.argv[i + 1])
+        return
+
     log.info(f"link_text_proxy 시작 — SN={ROBOT_SN} robot={ROBOT_IP}:{ROBOT_PORT} "
              f"redis={REDIS_HOST}:{REDIS_PORT}")
     robot = RobotText(ROBOT_IP, ROBOT_PORT)
