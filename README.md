@@ -1,25 +1,33 @@
 # Fleet Mission Dashboard
 
-여러 대의 로봇과 기지국(엣지)을 하나의 대시보드에서 관제하는 통합 시스템입니다.
-중앙 허브가 미션을 브로드캐스트하면 기지국이 이를 중계하고, 각 로봇의 제어 노드가
-조건을 평가해 수락/거절한 뒤 실행합니다. RSSI 기반 기지국 핸드오버와 서버 단절 시
-자동 fallback을 지원합니다.
+여러 대의 로봇과 기지국(엣지)을 관제하는 통합 시스템입니다. 중앙 허브가 미션을
+브로드캐스트하면 기지국이 중계하고, 각 로봇의 제어 노드가 조건을 평가해 수락/거절한 뒤
+실행합니다. RSSI 기반 기지국 핸드오버와 서버 단절 시 자동 fallback을 지원합니다.
 
-## 구성
+이 저장소는 **책임별로 브랜치를 분리**해 관리합니다. `main`은 개요만 두고, 실제 코드는
+아래 세 브랜치에 있습니다.
 
-| 경로 | 설명 |
-| --- | --- |
-| `apps/central-hub` | FastAPI 기반 중앙 허브. REST/WebSocket API, MQTT/Redis 연동, React SPA 서빙 |
-| `apps/brain-ep01/*` | EP01 로봇용 링크 프록시와 작업 워커(주행/비전) |
-| `services/mission-listener` | 제어용 RPi. 미션 수신 → 조건 평가 → accept/reject → 실행 |
-| `services/edge-gateway` | 기지국 RPi. 허브 미션을 로봇에 브로드캐스트하고 결과를 중계 |
-| `services/rssi_collector` | 기지국에서 로봇 AP의 RSSI를 스캔·평활화해 Redis에 기록 |
-| `services/handover_controller` | RSSI를 비교해 더 강한 기지국으로 핸드오버 트리거 |
-| `services/fallback_controller` | 서버 단절 감지 시 `last-mission.json` 자동 실행 |
-| `deploy/*` | k3s 배포용 Kubernetes 매니페스트와 ConfigMap |
-| `ui-spa` | Vite + React 프런트엔드(대시보드, 미션 빌더, 로그, Config) |
-| `scripts/*` | 배포, 점검, 테스트, 정리용 셸 스크립트 |
-| `tools/config_loader.py` | `config.yaml`을 점 표기법(`network.redis_host`)으로 읽는 공용 로더 |
+## 브랜치 구조
+
+| 브랜치 | 책임 | 내용 |
+| --- | --- | --- |
+| [`admin`](../../tree/admin) | 플랫폼/관리자 | 중앙 허브, 기지국·로봇 서비스, k3s 배포 매니페스트, 운영 스크립트, 제어 프로토콜. 관리자는 프로토콜과 노드만 관리 |
+| [`robot-image`](../../tree/robot-image) | 로봇 어댑터 | 로봇별 실제 SDK와 제어 명령 실행 어댑터(EP01 link_proxy, 작업 워커). 프로토콜만 지키면 자유 SDK로 구현 |
+| [`ui`](../../tree/ui) | UI (부가) | Vite + React 대시보드. UI 없이도 허브 API로 관제 가능 |
+
+## 아키텍처 핵심
+
+제어 명령은 특정 SDK가 아니라 **SDK 독립 Redis 프로토콜**로 정의됩니다. 덕분에
+플랫폼(k3s) 담당과 로봇 담당의 책임을 깨끗이 분리할 수 있습니다.
+
+- 플랫폼(`admin`)은 미션 분배·조건 평가·핸드오버·대시보드 API를 담당하며 로봇 SDK를
+  전혀 알 필요가 없습니다.
+- 로봇 담당(`robot-image`)은 프로토콜을 구현하는 어댑터를 자유로운 언어·SDK·베이스
+  이미지로 Docker에 담아 배포합니다.
+- 배포 시 k3s가 노드 라벨과 DaemonSet으로 각 노드에 맞는 어댑터 이미지를 스케줄합니다.
+
+제어 프로토콜(명령/텔레메트리/ack/생존 신호/이벤트)의 상세 계약은 `admin`·`robot-image`
+브랜치의 [`protocol/PROTOCOL.md`](../../blob/admin/protocol/PROTOCOL.md)에 정의되어 있습니다.
 
 ## 메시지 흐름
 
@@ -28,126 +36,18 @@
                                         --fleet/mission/broadcast--> [로봇 listener]
 [로봇 listener] --fleet/mission/accept/{station}--> [broadcaster]
                                         --fleet/mission/accepted--> [중앙 허브]
-[로봇 listener] --fleet/mission/cache/{robot}--> [broadcaster/허브] (체크포인트)
 
-핸드오버: [handover_controller] --fleet/handover/prewarm/{station}--> [broadcaster]
-                                --fleet/handover/{robot}--> [listener]
+명령 실행(SDK 독립 Redis 프로토콜):
+[listener] --RPUSH robot:{SN}:commands--> [robot-image 어댑터] --BLPOP-->
+[어댑터] --robot:{SN}:status / :online / :cmd_result--> [허브/대시보드]
 ```
-
-## 설정 (config.yaml)
-
-비공개 값은 저장소에 커밋하지 않습니다. `config.example.yaml`을 복사해 로컬 값으로 채우세요.
-
-```bash
-cp config.example.yaml config.yaml
-```
-
-주요 키:
-
-- `network.*` — Redis 호스트/포트, 허브 바인드 포트, 네임스페이스
-- `mqtt.*` — MQTT 브로커 호스트/포트/keepalive
-- `stations[]` — 기지국 ID·노드 이름·스캔/제어 인터페이스
-- `robot.ap.ssid_to_sn` — 로봇 AP SSID ↔ 시리얼번호(SN) 매핑
-- `services.rssi.*`, `services.handover.*` — RSSI 평활화·핸드오버 임계값
-- `images.*` — 각 서비스의 컨테이너 이미지 태그
-
-설정 파일 위치는 `CONFIG_PATH` 환경변수로 덮어쓸 수 있으며, 없으면 저장소 트리에서
-`config.yaml`을 상향 탐색합니다.
-
-## 주요 환경변수
-
-| 변수 | 기본값 | 설명 |
-| --- | --- | --- |
-| `CONFIG_PATH` | (자동 탐색) | 사용할 `config.yaml` 경로 |
-| `MOCK_MODE` | `0` | `1`이면 MQTT/Redis/장비 없이 import·기본 동작만 수행 |
-| `DEV` | `0` | 웹 UI를 개발 모드로 실행 |
-| `WEBUI_PORT` | `5001` | 웹 UI(FastAPI) 포트 |
-| `K3S_DRY_RUN` | `0` | k8s 연결 없이 허브 기동 |
-| `MQTT_HOST` / `MQTT_PORT` | config 값 | MQTT 브로커 오버라이드 |
-| `REDIS_HOST` / `REDIS_PORT` | config 값 | Redis 오버라이드 |
-| `STATION_ID` | `station-a` | 기지국 서비스가 사용하는 기지국 ID |
-| `ROBOT_ID` | config 값 | 로봇 서비스가 사용하는 로봇 SN |
 
 ## 시작하기
 
-```bash
-cp config.example.yaml config.yaml     # 로컬 환경 값으로 수정
-bash scripts/00_check_prereqs.sh       # 필요한 도구 점검
-```
-
-## 실행
-
-### 웹 UI
+원하는 책임의 브랜치를 체크아웃해 사용하세요.
 
 ```bash
-bash scripts/11_run_webui.sh           # 허브 API + 빌드된 SPA
-DEV=1 bash scripts/11_run_webui.sh     # 개발 모드(Vite :5173 + FastAPI)
+git checkout admin         # 플랫폼/배포/운영
+git checkout robot-image   # 로봇 제어 어댑터
+git checkout ui            # 대시보드
 ```
-
-기본 포트는 `WEBUI_PORT`(기본값 `5001`)이며 환경변수로 바꿀 수 있습니다.
-개발 모드에서는 UI가 `http://localhost:5173`, API가 `http://localhost:5001`에 뜹니다.
-빌드된 SPA가 없으면 프로덕션 모드 첫 실행 시 자동으로 `npm install && npm run build`를 수행합니다.
-
-### 전체 배포
-
-```bash
-bash scripts/run_all.sh
-```
-
-## 스크립트
-
-번호 순서대로 실행하면 배포 파이프라인이 완성됩니다. `scripts/common.sh`가 공통
-로깅·config 조회(`cfg`)·이미지 반영(`force_ds_image`) 함수를 제공합니다.
-
-| 스크립트 | 역할 |
-| --- | --- |
-| `00_check_prereqs.sh` | 필수 도구·Python 패키지·k3s·MQTT·config 점검 |
-| `01_label_nodes.sh` | 노드에 `node-role=edge`/`node-role=robot` 라벨 부여 |
-| `02_deploy_infra.sh` | ConfigMap·RBAC·Redis·central-hub 배포 |
-| `03_deploy_edge.sh` | broadcaster·rssi-collector·handover-controller 배포 |
-| `04_deploy_robot.sh` | mission-listener·fallback-controller 배포 |
-| `05_build_images.sh` | SPA 및 컨테이너 이미지 빌드(`PLATFORM`으로 멀티아키) |
-| `06_push_images.sh` | 로컬 빌드 이미지 레지스트리 푸시 |
-| `07_status.sh` | 노드·Pod·서비스·허브 헬스(`/api/health`)·Redis 키 현황 |
-| `08_logs.sh` | 서비스별 로그 조회(`08_logs.sh hub\|edge\|robot\|rssi\|handover\|fallback`) |
-| `11_run_webui.sh` | 웹 UI(허브 API + SPA) 실행 |
-| `09_test_pipeline.sh` | accept/reject 조건 매칭 파이프라인 테스트 |
-| `10_e2e_robot_test.sh` | 실제 로봇 대상 종단 간(E2E) 테스트 |
-| `12_debug_webui_mission.sh` | 미션 배포 경로 단계별 디버깅 |
-| `13_test_handover.sh` | RSSI 기반 핸드오버 시나리오 테스트 |
-| `99_cleanup.sh` | 배포 리소스 정리 |
-| `run_all.sh` | `00`~`04` + `07`을 한 번에 실행 |
-
-### 프런트엔드 빌드
-
-```bash
-cd ui-spa
-npm install
-npm run build                          # 산출물: ui-spa/dist (허브가 서빙)
-```
-
-## Mock 모드
-
-실제 장비 없이도 import와 기본 동작을 확인할 수 있습니다. 중앙 허브와 각 서비스는
-`MOCK_MODE=1`에서 외부 MQTT/Redis/장비 연결 없이 동작합니다.
-
-```bash
-MOCK_MODE=1 DEV=1 bash scripts/11_run_webui.sh
-```
-
-## 검증
-
-로컬에서 확인한 항목:
-
-- Python/YAML/Shell 문법 검사
-- Mock 모드 import smoke test
-- `kubectl --dry-run=client`
-- 로컬 Mosquitto publish/subscribe smoke test
-- `npm run build` (프런트엔드)
-
-## 공개 범위 주의
-
-- 비공개 설정값은 `config.yaml`에 두고, 저장소에는 `config.example.yaml`만 둡니다.
-- `.venv`, 빌드 산출물, Mosquitto 데이터, 로컬 로그는 커밋하지 않습니다.
-- 노드 이름, MQTT 호스트, 장비 식별자, 비밀번호는 공개용 예시 값으로 바꿔 둡니다.
-- 실제 배포 시 `deploy/*`와 `config.yaml` 값을 환경에 맞게 조정하세요.
