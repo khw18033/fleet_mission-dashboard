@@ -152,13 +152,13 @@ kill "$MQTT_PID" 2>/dev/null || true
 echo ""
 echo -e "${BOLD}━━━ Phase 2 핸드오버 테스트 결과 ━━━${RESET}"
 grep -q "fleet/handover/prewarm" "$LOG_DIR/mqtt.log" 2>/dev/null \
-  && echo "  ✅ Prewarm 발행" || echo "  ❌ Prewarm 미발행"
+  && echo "  [OK] Prewarm 발행" || echo "  [FAIL] Prewarm 미발행"
 grep -q "fleet/handover/$ROBOT_SN" "$LOG_DIR/mqtt.log" 2>/dev/null \
-  && echo "  ✅ Handover 발행" || echo "  ❌ Handover 미발행"
+  && echo "  [OK] Handover 발행" || echo "  [FAIL] Handover 미발행"
 grep -q "resume_from" "$LOG_DIR/mqtt.log" 2>/dev/null \
-  && echo "  ✅ 미션 재개 브로드캐스트" || echo "  ⚠️  미션 재개 확인 필요"
+  && echo "  [OK] 미션 재개 브로드캐스트" || echo "  [WARN]  미션 재개 확인 필요"
 [[ -n "$HO_RAW" ]] \
-  && echo "  ✅ Redis 핸드오버 기록" || echo "  ❌ Redis 핸드오버 기록 없음"
+  && echo "  [OK] Redis 핸드오버 기록" || echo "  [FAIL] Redis 핸드오버 기록 없음"
 echo ""
 echo "  전체 MQTT 로그: $LOG_DIR/mqtt.log"
 echo "  handover_controller 로그:"

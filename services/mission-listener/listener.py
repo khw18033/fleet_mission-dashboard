@@ -166,7 +166,7 @@ def execute_mission(client: mqtt.Client, payload: dict, start_from: int = 0):
     total      = len(nodes)
     cache_topic = TOPIC_CACHE_TPL.format(robot_id=ROBOT_ID)
 
-    log.info(f"▶ Mission start: {mission_id} ({total} nodes, from={start_from})")
+    log.info(f"Mission start: {mission_id} ({total} nodes, from={start_from})")
 
     for idx in range(start_from, total):
         # 핸드오버 중단 신호 확인
@@ -220,7 +220,7 @@ def execute_mission(client: mqtt.Client, payload: dict, start_from: int = 0):
             "status":       "completed",
         }
         client.publish(cache_topic, json.dumps(done), qos=1)
-        log.info(f"✅ Mission {mission_id} completed")
+        log.info(f"Mission {mission_id} completed")
 
     with _mission_lock:
         _current_mission = None
@@ -267,7 +267,7 @@ def on_broadcast(client, userdata, msg):
         "timestamp":  time.time(),
     }
     client.publish(accept_topic, json.dumps(response), qos=1)
-    log.info(f"{'✅ ACCEPT' if accepted else '❌ REJECT'} mission={mission_id} reason={reason or 'ok'}")
+    log.info(f"{'ACCEPT' if accepted else 'REJECT'} mission={mission_id} reason={reason or 'ok'}")
 
     if accepted:
         save_mission(payload)
@@ -292,7 +292,7 @@ def on_handover(client, userdata, msg):
 
     from_sta = payload.get("from_station")
     to_sta   = payload.get("to_station")
-    log.info(f"🔄 핸드오버 수신 — {from_sta} → {to_sta}")
+    log.info(f"핸드오버 수신 — {from_sta} → {to_sta}")
 
     with _mission_lock:
         if _current_mission is not None:

@@ -59,7 +59,7 @@ section "STEP 0 — 사전 상태 스냅샷"
 
 # Hub 헬스체크
 info "Hub 헬스체크..."
-HEALTH=$(curl -s --max-time 4 "$HUB_URL/health/k8s" 2>/dev/null || echo "{}")
+HEALTH=$(curl -s --max-time 4 "$HUB_URL/api/health" 2>/dev/null || echo "{}")
 echo "$HEALTH" | python3 -m json.tool 2>/dev/null || echo "$HEALTH"
 
 K3S_OK=$(echo "$HEALTH" | python3 -c "import sys,json; print(json.load(sys.stdin).get('k3s_available',False))" 2>/dev/null || echo "false")
@@ -364,7 +364,7 @@ info "── link_proxy 로그 ──"
 cat "$LOG_LINK" 2>/dev/null | tail -30 || warn "link_proxy 로그 없음 (Pod 없거나 미연결)"
 
 # 명령 실행 여부
-if grep -qi "실행\|MOVE\|완료\|✅\|execute\|LPUSH" "$LOG_LINK" 2>/dev/null; then
+if grep -qi "실행\|MOVE\|완료\|execute\|LPUSH" "$LOG_LINK" 2>/dev/null; then
   ok "link_proxy가 명령을 수신/실행한 로그 있음"
 elif [[ -n "$LINK_POD" ]]; then
   warn "link_proxy 로그에 명령 실행 흔적 없음"
@@ -413,16 +413,16 @@ echo "Robot Type: $ROBOT_TYPE"
 echo ""
 echo "[체크리스트]"
 [[ "$MQTT_SENT" == "True" || "$MQTT_SENT" == "true" ]] \
-  && echo "  ✅ Hub MQTT 발행" || echo "  ❌ Hub MQTT 발행 실패"
+  && echo "  [OK] Hub MQTT 발행" || echo "  [FAIL] Hub MQTT 발행 실패"
 grep -q "fleet/mission/broadcast" "$LOG_MQTT" 2>/dev/null \
-  && echo "  ✅ broadcaster 발행" || echo "  ❌ broadcaster 발행 실패"
+  && echo "  [OK] broadcaster 발행" || echo "  [FAIL] broadcaster 발행 실패"
 echo "$ACCEPT_LINE" | grep -qi "ACCEPT" 2>/dev/null \
-  && echo "  ✅ listener ACCEPT" || echo "  ❌ listener REJECT/미수신"
+  && echo "  [OK] listener ACCEPT" || echo "  [FAIL] listener REJECT/미수신"
 [[ "$NEW_QLEN" != "0" && "$NEW_QLEN" != "?" ]] || \
-grep -qi "실행\|MOVE\|완료\|✅" "$LOG_LINK" 2>/dev/null \
-  && echo "  ✅ Redis cmd 전달" || echo "  ❌ Redis cmd 미전달"
-grep -qi "실행\|MOVE\|완료\|✅" "$LOG_LINK" 2>/dev/null \
-  && echo "  ✅ link_proxy 실행" || echo "  ❌ link_proxy 미실행"
+grep -qi "실행\|MOVE\|완료" "$LOG_LINK" 2>/dev/null \
+  && echo "  [OK] Redis cmd 전달" || echo "  [FAIL] Redis cmd 미전달"
+grep -qi "실행\|MOVE\|완료" "$LOG_LINK" 2>/dev/null \
+  && echo "  [OK] link_proxy 실행" || echo "  [FAIL] link_proxy 미실행"
 echo ""
 echo "[로그 파일]"
 echo "  MQTT:        $LOG_MQTT"
@@ -438,25 +438,25 @@ echo ""
 
 # 어느 단계에서 막혔는지 최종 판단
 if ! { [[ "$MQTT_SENT" == "True" ]] || [[ "$MQTT_SENT" == "true" ]]; }; then
-  echo -e "${RED}${BOLD}▶ 막힌 지점: Hub → MQTT 브로커 연결 문제${RESET}"
+  echo -e "${RED}${BOLD} 막힌 지점: Hub → MQTT 브로커 연결 문제${RESET}"
   echo "  확인: kubectl logs -n $NAMESPACE -l app=central-hub | grep -i mqtt"
 elif ! grep -q "fleet/mission/broadcast" "$LOG_MQTT" 2>/dev/null; then
-  echo -e "${RED}${BOLD}▶ 막힌 지점: broadcaster가 deploy 토픽 미수신 또는 필터링${RESET}"
+  echo -e "${RED}${BOLD} 막힌 지점: broadcaster가 deploy 토픽 미수신 또는 필터링${RESET}"
   echo "  확인: cat $LOG_BROADCASTER"
 elif echo "$ACCEPT_LINE" | grep -qi "REJECT" 2>/dev/null; then
-  echo -e "${RED}${BOLD}▶ 막힌 지점: listener가 조건 불일치로 REJECT${RESET}"
+  echo -e "${RED}${BOLD} 막힌 지점: listener가 조건 불일치로 REJECT${RESET}"
   echo "  확인: cat $LOG_LISTENER"
   echo "  힌트: robot_online=true 인데 Redis에 로봇 상태 없으면 reject"
   echo "        → link_proxy 먼저 실행 후 다시 시도"
 elif [[ "$NEW_QLEN" == "0" ]] && ! grep -qi "ACCEPT" "$LOG_LISTENER" 2>/dev/null; then
-  echo -e "${RED}${BOLD}▶ 막힌 지점: listener가 브로드캐스트 미수신${RESET}"
+  echo -e "${RED}${BOLD} 막힌 지점: listener가 브로드캐스트 미수신${RESET}"
   echo "  확인: kubectl logs -n $NAMESPACE -l app=mission-listener"
-elif ! grep -qi "실행\|MOVE\|완료\|✅" "$LOG_LINK" 2>/dev/null; then
-  echo -e "${RED}${BOLD}▶ 막힌 지점: link_proxy가 Redis cmd 미수신 또는 로봇 미연결${RESET}"
+elif ! grep -qi "실행\|MOVE\|완료" "$LOG_LINK" 2>/dev/null; then
+  echo -e "${RED}${BOLD} 막힌 지점: link_proxy가 Redis cmd 미수신 또는 로봇 미연결${RESET}"
   echo "  확인: cat $LOG_LINK"
   echo "  힌트: ROBOT_IP 환경변수, 로봇 AP 연결 여부 확인"
 else
-  echo -e "${GREEN}${BOLD}▶ 파이프라인 정상 — 로봇 육안 동작 여부 확인${RESET}"
+  echo -e "${GREEN}${BOLD} 파이프라인 정상 — 로봇 육안 동작 여부 확인${RESET}"
 fi
 
 echo ""

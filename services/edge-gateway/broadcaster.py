@@ -142,7 +142,7 @@ def on_prewarm(client, userdata, msg):
     from_station = payload.get("from_station")
     checkpoint   = payload.get("checkpoint")
 
-    log.info(f"🔄 Prewarm 수신 — robot={robot_sn} from={from_station}")
+    log.info(f"Prewarm 수신 — robot={robot_sn} from={from_station}")
 
     if not checkpoint:
         log.warning("Prewarm: 체크포인트 없음 — 재브로드캐스트 불가")

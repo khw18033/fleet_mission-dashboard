@@ -36,12 +36,13 @@ kubectl rollout status deployment/"$REDIS_DEPLOY" -n "$NAMESPACE" --timeout=60s
 ok "Redis 준비 완료: $REDIS_DEPLOY"
 
 # Redis NodePort 보장: robot/link_proxy가 외부 경로로 접근할 때 사용
-cat <<'EOF' | kubectl apply -f -
+# (heredoc를 확장 모드로 두어 namespace를 config 값으로 채운다)
+cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: Service
 metadata:
   name: redis-nodeport
-  namespace: centralized
+  namespace: ${NAMESPACE}
 spec:
   type: NodePort
   selector:

@@ -108,7 +108,7 @@ def execute_fallback(mission: dict) -> None:
     _fallback_active = True
     nodes      = mission.get("nodes", [])
     mission_id = mission.get("mission_id", "fallback")
-    log.info(f"🔴 Fallback 미션 실행: {mission_id} ({len(nodes)} nodes)")
+    log.info(f"Fallback 미션 실행: {mission_id} ({len(nodes)} nodes)")
 
     for idx, node in enumerate(nodes):
         if _connected.is_set():
@@ -142,7 +142,7 @@ def check_server_heartbeat() -> bool:
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
-        log.info("✅ MQTT 서버 연결됨 — 정상 모드")
+        log.info("MQTT 서버 연결됨 — 정상 모드")
         _connected.set()
     else:
         log.warning(f"MQTT 연결 실패 rc={rc}")
@@ -150,7 +150,7 @@ def on_connect(client, userdata, flags, rc):
 
 
 def on_disconnect(client, userdata, rc):
-    log.warning(f"⚠️ MQTT 서버 단절 (rc={rc})")
+    log.warning(f"MQTT 서버 단절 (rc={rc})")
     _connected.clear()
 
 
@@ -164,7 +164,7 @@ def heartbeat_monitor():
         server_ok = hb_alive and mqtt_alive
 
         if not server_ok and not _fallback_active:
-            log.warning("🔴 서버 단절 감지 — Fallback 모드 진입")
+            log.warning("서버 단절 감지 — Fallback 모드 진입")
             mission = load_last_mission()
             if mission:
                 t = threading.Thread(target=execute_fallback, args=(mission,), daemon=True)
@@ -173,7 +173,7 @@ def heartbeat_monitor():
                 log.warning("last-mission.json 없음 — 대기")
 
         elif server_ok and _fallback_active:
-            log.info("✅ 서버 재연결 — Fallback 모드 종료")
+            log.info("서버 재연결 — Fallback 모드 종료")
             # execute_fallback이 _connected.is_set() 체크로 자동 중단됨
 
         time.sleep(SERVER_HB_TIMEOUT // 2)

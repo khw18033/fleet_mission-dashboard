@@ -522,8 +522,9 @@ async def serve_spa(full_path: str):
     index = SPA_DIST / "index.html"
     if index.exists():
         return FileResponse(str(index))
-        # SPA가 빌드되지 않았을 때 간단한 상태 페이지 반환
-        html = f"""
+
+    # SPA가 빌드되지 않았을 때 간단한 상태 페이지 반환
+    html = f"""
         <!doctype html>
         <html>
         <head>
@@ -553,7 +554,7 @@ async def serve_spa(full_path: str):
         </body>
         </html>
         """
-        return HTMLResponse(content=html, status_code=200)
+    return HTMLResponse(content=html, status_code=200)
 
 
 # ── 진입점 ───────────────────────────────────────────────────────

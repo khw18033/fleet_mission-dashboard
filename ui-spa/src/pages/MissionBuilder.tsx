@@ -192,7 +192,7 @@ function BlockView({
         <span className="flex-1 text-sm font-semibold">{LABELS[block.type]}</span>
         <button onClick={onMoveUp} className="text-xs opacity-60 hover:opacity-100">↑</button>
         <button onClick={onMoveDn} className="text-xs opacity-60 hover:opacity-100">↓</button>
-        <button onClick={onDelete} className="text-xs opacity-60 hover:opacity-100 text-red-300">✕</button>
+        <button onClick={onDelete} className="text-xs opacity-60 hover:opacity-100 text-red-300">삭제</button>
       </div>
 
       <div className="px-3 pb-3 pt-2 flex flex-wrap gap-2">
@@ -301,7 +301,8 @@ export default function MissionBuilder() {
   const [missionName, setMissionName] = useState('mission-01')
   const [conditions, setConditions] = useState({ robot_type: 'ep01', robot_online: true, min_battery: 20, max_latency_ms: 9999 })
   const [targetStations, setTargetStations] = useState<string[]>([...STATION_OPTIONS])
-  const [status, setStatus] = useState<string | null>(null)
+  // 배포 상태: kind로 색상을 결정하므로 메시지 텍스트(이모지)에 의존하지 않는다.
+  const [status, setStatus] = useState<{ kind: 'ok' | 'warn' | 'error'; text: string } | null>(null)
   const [deploying, setDeploying] = useState(false)
   const [canvasDragOver, setCanvasDragOver] = useState(false)
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle')
@@ -325,7 +326,7 @@ export default function MissionBuilder() {
 
   async function deploy() {
     if (!blocks.length) {
-      setStatus('노드를 추가하세요')
+      setStatus({ kind: 'warn', text: '노드를 추가하세요' })
       return
     }
 
@@ -338,9 +339,11 @@ export default function MissionBuilder() {
         body: JSON.stringify(payload),
       })
       const data = await response.json()
-      setStatus(data.mqtt_sent ? `✅ 배포 완료 — ${data.mission_id}` : `⚠️ MQTT 미전송 (mission_id: ${data.mission_id})`)
+      setStatus(data.mqtt_sent
+        ? { kind: 'ok', text: `배포 완료 — ${data.mission_id}` }
+        : { kind: 'warn', text: `MQTT 미전송 (mission_id: ${data.mission_id})` })
     } catch (error) {
-      setStatus(`❌ 배포 실패: ${error}`)
+      setStatus({ kind: 'error', text: `배포 실패: ${error}` })
     } finally {
       setDeploying(false)
     }
@@ -435,7 +438,7 @@ export default function MissionBuilder() {
             disabled={deploying}
             className="ml-auto bg-[#7c6ff7] hover:bg-[#6a5fe0] text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 shadow-[0_10px_24px_rgba(124,111,247,0.24)]"
           >
-            {deploying ? '배포 중...' : '🚀 브로드캐스트 배포'}
+            {deploying ? '배포 중...' : '브로드캐스트 배포'}
           </button>
 
           <button
@@ -447,8 +450,8 @@ export default function MissionBuilder() {
         </div>
 
         {status && (
-          <div className={`px-4 py-2 text-sm border-b border-white/10 ${status.startsWith('✅') ? 'text-emerald-300' : 'text-amber-300'}`}>
-            {status}
+          <div className={`px-4 py-2 text-sm border-b border-white/10 ${status.kind === 'ok' ? 'text-emerald-300' : status.kind === 'error' ? 'text-red-300' : 'text-amber-300'}`}>
+            {status.text}
           </div>
         )}
 

@@ -22,33 +22,7 @@ ok "mission-listener DaemonSet 적용"
 kubectl apply -f deploy/robot/fallback-controller-daemonset.yaml
 ok "fallback-controller DaemonSet 적용"
 
-# ── 이미지 태그 강제 반영 ───────────────────────────────────────
-force_ds_image() {
-  local ds="$1"
-  local image="$2"
-
-  if [[ -z "$image" || "$image" == "null" ]]; then
-    warn "$ds 이미지 config 없음 — skip"
-    return 0
-  fi
-
-  local cname
-  cname=$(kubectl get daemonset "$ds" -n "$NAMESPACE" \
-    -o jsonpath='{.spec.template.spec.containers[0].name}' 2>/dev/null || echo "")
-
-  if [[ -z "$cname" ]]; then
-    warn "$ds 컨테이너 이름 확인 실패 — skip"
-    return 0
-  fi
-
-  kubectl set image daemonset/"$ds" -n "$NAMESPACE" "$cname=$image"
-  kubectl patch daemonset "$ds" -n "$NAMESPACE" --type=json \
-    -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Always"}]' \
-    >/dev/null || true
-
-  ok "$ds 이미지 적용: $image"
-}
-
+# ── 이미지 태그 강제 반영 (force_ds_image는 common.sh 정의) ──────
 force_ds_image mission-listener "$(cfg images.mission_listener)"
 force_ds_image fallback-controller "$(cfg images.fallback_controller)"
 

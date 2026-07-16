@@ -284,7 +284,7 @@ class RobotLinkProxy:
         action = cmd.get("action", "")
         p = cmd.get("params", {})
 
-        log.info(f"▶ {target}.{action}  params={p}")
+        log.info(f"{target}.{action}  params={p}")
 
         try:
             if target == "flow":
@@ -336,10 +336,10 @@ class RobotLinkProxy:
             else:
                 log.warning(f"알 수 없는 target: {target}")
 
-            log.info(f"✅ {target}.{action} 완료")
+            log.info(f"{target}.{action} 완료")
 
         except Exception as e:
-            log.error(f"❌ {target}.{action} 실패: {e}", exc_info=True)
+            log.error(f"{target}.{action} 실패: {e}", exc_info=True)
 
     def _exec_flow(self, action: str, cmd: dict):
         if action == "REPEAT":
@@ -482,7 +482,7 @@ def start_proxy():
                 time.sleep(RECONNECT_DELAY)
                 continue
 
-            log.info("로봇 연결 성공 ✅")
+            log.info("로봇 연결 성공")
             proxy = RobotLinkProxy(ep)
 
             try:

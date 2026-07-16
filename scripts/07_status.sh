@@ -23,7 +23,7 @@ HUB_NODE=$(kubectl get pod -n "$NAMESPACE" -l app=central-hub \
   -o jsonpath='{.items[0].status.hostIP}' 2>/dev/null || echo "")
 if [[ -n "$HUB_NODE" ]]; then
   info "Hub: http://${HUB_NODE}:${HUB_PORT}"
-  curl -s --max-time 3 "http://${HUB_NODE}:${HUB_PORT}/health/k8s" \
+  curl -s --max-time 3 "http://${HUB_NODE}:${HUB_PORT}/api/health" \
     | python3 -m json.tool 2>/dev/null || warn "Hub 응답 없음"
 else
   warn "central-hub Pod 없음"

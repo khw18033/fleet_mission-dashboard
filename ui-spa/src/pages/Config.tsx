@@ -92,7 +92,7 @@ export default function Config() {
       </div>
 
       {/* 시스템 상태 */}
-      <Card title="⚙️ 시스템 상태">
+      <Card title="시스템 상태">
         {health ? (
           <div className="grid grid-cols-3 gap-3">
             <StatusBadge ok={health.k3s_available}  label="k3s 연결" />
@@ -111,7 +111,7 @@ export default function Config() {
       </Card>
 
       {/* Redis 직접 조회 */}
-      <Card title="🗄 Redis 직접 조회">
+      <Card title="Redis 직접 조회">
         {/* 프리셋 */}
         <div className="flex flex-wrap gap-1.5 mb-3">
           {PRESETS.map(({ label, value }) => (
@@ -165,7 +165,7 @@ export default function Config() {
       </Card>
 
       {/* 실행 순서 가이드 */}
-      <Card title="📋 배포 순서">
+      <Card title="배포 순서">
         <ol className="space-y-2 text-sm text-[#b7bfd0]">
           {deploySteps.map((cmd, i) => (
             <li key={i} className="flex gap-3">

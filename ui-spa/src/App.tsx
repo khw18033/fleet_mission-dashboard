@@ -5,10 +5,10 @@ import Logs from './pages/Logs'
 import Config from './pages/Config'
 
 const NAV = [
-  { to: '/',        label: '📊 대시보드' },
-  { to: '/mission', label: '🎮 미션 빌더' },
-  { to: '/logs',    label: '📡 MQTT 로그' },
-  { to: '/config',  label: '⚙️ Config' },
+  { to: '/',        label: '대시보드' },
+  { to: '/mission', label: '미션 빌더' },
+  { to: '/logs',    label: 'MQTT 로그' },
+  { to: '/config',  label: 'Config' },
 ]
 
 export default function App() {

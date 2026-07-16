@@ -42,7 +42,7 @@ info "Log dir:    $LOG_DIR"
 section "사전 상태 점검"
 
 # Hub 응답
-HEALTH=$(curl -s --max-time 4 "$HUB_URL/health/k8s" || echo "{}")
+HEALTH=$(curl -s --max-time 4 "$HUB_URL/api/health" || echo "{}")
 MQTT_OK=$(echo "$HEALTH" | python3 -c "import sys,json; print(json.load(sys.stdin).get('mqtt_available',False))" 2>/dev/null || echo "false")
 if [[ "$MQTT_OK" != "True" && "$MQTT_OK" != "true" ]]; then
   warn "Hub의 MQTT 연결이 확인되지 않음 — 계속 진행하지만 배포가 실패할 수 있습니다"
@@ -217,7 +217,7 @@ info "  1. 전진 0.5m  (약 ${MOVE_DELAY}초)"
 info "  2. 그리퍼 닫기 (약 ${GRIPPER_DELAY}초)"
 info "  3. 빨간 LED 켜기"
 echo ""
-info "⚠️  로봇 앞 공간을 확보하세요 (0.5m 이상)"
+info "[WARN]  로봇 앞 공간을 확보하세요 (0.5m 이상)"
 
 # 카운트다운
 for i in $(seq "$TOTAL_MISSION_SEC" -1 1); do
@@ -283,12 +283,12 @@ echo "  미션 이름: $MISSION_NAME"
 echo ""
 echo "  파이프라인 체크:"
 grep -q "fleet/mission/broadcast" "$LOG_DIR/mqtt.log" 2>/dev/null \
-  && echo "  ✅ 브로드캐스트 발행" || echo "  ❌ 브로드캐스트 미발행"
+  && echo "  [OK] 브로드캐스트 발행" || echo "  [FAIL] 브로드캐스트 미발행"
 grep -q "\"decision\": \"accept\"\|decision.*accept" "$LOG_DIR/mqtt.log" 2>/dev/null \
-  && echo "  ✅ accept 수신" || echo "  ❌ accept 미수신"
+  && echo "  [OK] accept 수신" || echo "  [FAIL] accept 미수신"
 [[ -z "$QLEN" || "$QLEN" == "0" || "$QLEN" == "N/A" ]] \
-  && echo "  ✅ Redis cmd 소비됨 (link_proxy 처리)" \
-  || echo "  ⚠️  Redis cmd 큐 잔여: $QLEN (link_proxy 연결 확인)"
+  && echo "  [OK] Redis cmd 소비됨 (link_proxy 처리)" \
+  || echo "  [WARN]  Redis cmd 큐 잔여: $QLEN (link_proxy 연결 확인)"
 echo ""
 echo "  로봇 동작 확인 (육안):"
 read -r -p "  1. 전진 0.5m 동작 여부 (y/n): " R1
@@ -296,18 +296,18 @@ read -r -p "  2. 그리퍼 닫힘 여부     (y/n): " R2
 read -r -p "  3. 빨간 LED 켜짐 여부   (y/n): " R3
 echo ""
 echo "  결과:"
-[[ "$R1" == "y" ]] && echo "  ✅ 전진" || echo "  ❌ 전진 실패"
-[[ "$R2" == "y" ]] && echo "  ✅ 그리퍼" || echo "  ❌ 그리퍼 실패"
-[[ "$R3" == "y" ]] && echo "  ✅ LED" || echo "  ❌ LED 실패"
+[[ "$R1" == "y" ]] && echo "  [OK] 전진" || echo "  [FAIL] 전진 실패"
+[[ "$R2" == "y" ]] && echo "  [OK] 그리퍼" || echo "  [FAIL] 그리퍼 실패"
+[[ "$R3" == "y" ]] && echo "  [OK] LED" || echo "  [FAIL] LED 실패"
 
 ALL_PASS=true
 [[ "$R1" != "y" || "$R2" != "y" || "$R3" != "y" ]] && ALL_PASS=false
 
 echo ""
 if $ALL_PASS; then
-  echo -e "  ${GREEN}${BOLD}🎉 E2E 테스트 전체 통과${RESET}"
+  echo -e "  ${GREEN}${BOLD} E2E 테스트 전체 통과${RESET}"
 else
-  echo -e "  ${RED}${BOLD}❌ 일부 항목 실패 — 아래 로그를 확인하세요${RESET}"
+  echo -e "  ${RED}${BOLD}[FAIL] 일부 항목 실패 — 아래 로그를 확인하세요${RESET}"
   echo "  MQTT 전체 로그:  $LOG_DIR/mqtt.log"
   echo "  listener 로그:   bash scripts/08_logs.sh robot"
   echo "  link_proxy 로그: kubectl logs -n $NAMESPACE -l app=ep01-link -f"

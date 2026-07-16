@@ -10,7 +10,6 @@ mqtt:
   host: mqtt-broker.example.local
   port: 1883
   keepalive: 60
-  topic_prefix: fleet
 stations:
 - id: station-a
   label: 기지국 A
@@ -24,8 +23,6 @@ stations:
   control_interface: wlan0
 robot:
   type: ep01
-  connection_mode: ap
-  default_sn: REPLACE_WITH_ROBOT_SN
   ap:
     ssid_prefix: RMEP-
     password: CHANGE_ME_PASSWORD
@@ -33,18 +30,9 @@ robot:
       RMEP-XXXXXX: REPLACE_WITH_ROBOT_SN
   offline_timeout_sec: 10
 runtime:
-  default_robot_type: ep01
   default_robot_sn: REPLACE_WITH_ROBOT_SN
-  link_id_prefix: link-
-  node_selector_label: kubernetes.io/hostname
 kubernetes:
-  service_account: central-hub-sa
-  image_pull_policy: Always
   node_port: 30005
-  node_selectors:
-    central_hub: change-me-central-hub-node
-  dns_policy: ClusterFirstWithHostNet
-  host_network: true
 link:
   conn_type: ap
 services:
@@ -66,24 +54,16 @@ services:
     stable_count: 3
 timeouts:
   redis_command_wait_sec: 5
-  mission_accept_wait_sec: 10
 images:
   central_hub: jny123/central-hub:v32
   link_proxy: jny123/ep01-link:v17
   nav_worker: jny123/nav-worker:latest
   vision_worker: jny123/vision-worker:latest
-  redis: redis:7-alpine
   broadcaster: jny123/edge-broadcaster:v2
   mission_listener: jny123/mission-listener:v3
   rssi_collector: jny123/rssi-collector:v1
   handover_controller: jny123/handover-controller:v1
   fallback_controller: jny123/fallback-controller:v1
-llm:
-  host: llm.example.local
-  port: 11434
-  model: llama3.2:3b
-  url: http://llm.example.local:11434/api/generate
-  request_timeout_sec: 300
 mission:
   task_command: 'python -m pip install redis && python -c "import os; exec(os.environ.get(''MISSION_CODE'', ''''))"
 
@@ -190,9 +170,6 @@ mission_spec:
   - lt
   - gte
   - lte
-webui:
-  host: 0.0.0.0
-  port: 8501
 docker:
   build_contexts:
     central_hub: .

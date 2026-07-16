@@ -109,7 +109,7 @@ export default function Dashboard() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {(node.pods || []).map((pod: any) => (
                       <span key={pod.name} className={`text-xs px-2 py-1 rounded-full border ${pod.phase === 'Running' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' : 'bg-rose-500/10 border-rose-500/20 text-rose-300'}`}>
-                        {pod.app || pod.name} {pod.phase === 'Running' ? '✅' : '⚠️'}
+                        {pod.app || pod.name} · {pod.phase}
                       </span>
                     ))}
                   </div>
@@ -135,7 +135,7 @@ export default function Dashboard() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {(node.pods || []).map((pod: any) => (
                       <span key={pod.name} className={`text-xs px-2 py-1 rounded-full border ${pod.phase === 'Running' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' : 'bg-rose-500/10 border-rose-500/20 text-rose-300'}`}>
-                        {pod.app || pod.name} {pod.phase === 'Running' ? '✅' : '⚠️'}
+                        {pod.app || pod.name} · {pod.phase}
                       </span>
                     ))}
                   </div>

@@ -202,7 +202,7 @@ class HandoverState:
         now = time.time()
 
         log.info(
-            f"🔄 핸드오버 트리거: robot={self.sn} "
+            f"핸드오버 트리거: robot={self.sn} "
             f"{self.active_sta} → {target_sta}"
         )
 

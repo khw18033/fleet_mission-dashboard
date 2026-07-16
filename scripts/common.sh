@@ -39,3 +39,31 @@ TOPIC_BROADCAST="fleet/mission/broadcast"
 TOPIC_ACCEPT="fleet/mission/accept/#"
 TOPIC_CACHE="fleet/mission/cache/#"
 TOPIC_ACCEPTED="fleet/mission/accepted"
+
+# force_ds_image — DaemonSet의 컨테이너 이미지를 config 값으로 강제 반영.
+# 배포 매니페스트의 이미지 태그가 오래됐을 때 config.yaml 기준으로 덮어쓴다.
+#   $1: DaemonSet 이름, $2: 적용할 이미지 (비어 있으면 skip)
+force_ds_image() {
+  local ds="$1" image="$2"
+
+  if [[ -z "$image" || "$image" == "null" ]]; then
+    warn "$ds 이미지 config 없음 — skip"
+    return 0
+  fi
+
+  local cname
+  cname=$(kubectl get daemonset "$ds" -n "$NAMESPACE" \
+    -o jsonpath='{.spec.template.spec.containers[0].name}' 2>/dev/null || echo "")
+
+  if [[ -z "$cname" ]]; then
+    warn "$ds 컨테이너 이름 확인 실패 — skip"
+    return 0
+  fi
+
+  kubectl set image daemonset/"$ds" -n "$NAMESPACE" "$cname=$image"
+  kubectl patch daemonset "$ds" -n "$NAMESPACE" --type=json \
+    -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Always"}]' \
+    >/dev/null || true
+
+  ok "$ds 이미지 적용: $image"
+}

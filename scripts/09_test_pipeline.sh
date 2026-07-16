@@ -117,10 +117,10 @@ sleep "$WAIT_SEC"
 
 # accept 확인
 if grep -q "accept" "$LOG_DIR/mqtt_all.log" 2>/dev/null; then
-  ok "TEST A ✅ accept 수신"
+  ok "TEST A [OK] accept 수신"
   grep "fleet/mission/accept" "$LOG_DIR/mqtt_all.log" | tail -3
 else
-  warn "TEST A ⚠ accept 미수신 — listener 로그 확인:"
+  warn "TEST A [WARN] accept 미수신 — listener 로그 확인:"
   kubectl logs -n "$NAMESPACE" -l app=mission-listener --tail=20 2>/dev/null || true
 fi
 
@@ -162,9 +162,9 @@ sleep "$WAIT_SEC"
 
 REJECT_COUNT=$(grep -c "reject" "$LOG_DIR/mqtt_all.log" 2>/dev/null || echo "0")
 if [[ "$REJECT_COUNT" -gt 0 ]]; then
-  ok "TEST B ✅ reject 수신 ($REJECT_COUNT 건)"
+  ok "TEST B [OK] reject 수신 ($REJECT_COUNT 건)"
 else
-  warn "TEST B ⚠ reject 미수신 — 로봇 타입 조건 미작동 가능"
+  warn "TEST B [WARN] reject 미수신 — 로봇 타입 조건 미작동 가능"
 fi
 grep "fleet/mission/accept" "$LOG_DIR/mqtt_all.log" | grep "go1\|reject" | tail -3 || true
 
@@ -181,9 +181,9 @@ sleep "$WAIT_SEC"
 
 REJECT2=$(grep -c "reject" "$LOG_DIR/mqtt_all.log" 2>/dev/null || echo "0")
 if [[ "$REJECT2" -gt "$REJECT_COUNT" ]]; then
-  ok "TEST C ✅ reject 수신 (배터리 조건 작동)"
+  ok "TEST C [OK] reject 수신 (배터리 조건 작동)"
 else
-  warn "TEST C ⚠ 추가 reject 없음"
+  warn "TEST C [WARN] 추가 reject 없음"
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -201,9 +201,9 @@ echo -e "${BOLD}━━━ 최종 집계 ━━━${RESET}"
 echo "  accept 수신: ${ACCEPT_CNT}건"
 echo "  reject 수신: ${REJECT_CNT}건"
 echo ""
-echo "  TEST A (ep01 accept): $([ "$A_RESULT" = "y" ] && echo "✅ PASS" || echo "❌ FAIL")"
-echo "  TEST B (go1 reject):  $([ "$REJECT_COUNT" -gt 0 ] && echo "✅ PASS" || echo "❌ FAIL")"
-echo "  TEST C (battery):     $([ "$REJECT2" -gt "$REJECT_COUNT" ] && echo "✅ PASS" || echo "❌ FAIL")"
+echo "  TEST A (ep01 accept): $([ "$A_RESULT" = "y" ] && echo "[OK] PASS" || echo "[FAIL] FAIL")"
+echo "  TEST B (go1 reject):  $([ "$REJECT_COUNT" -gt 0 ] && echo "[OK] PASS" || echo "[FAIL] FAIL")"
+echo "  TEST C (battery):     $([ "$REJECT2" -gt "$REJECT_COUNT" ] && echo "[OK] PASS" || echo "[FAIL] FAIL")"
 echo ""
 echo "  전체 MQTT 로그: $LOG_DIR/mqtt_all.log"
 echo "  listener 로그:  bash scripts/08_logs.sh robot"
