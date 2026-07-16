@@ -1,24 +1,29 @@
-# Fleet Mission Dashboard
+# Fleet Mission — Admin (플랫폼/관리자)
 
-여러 대의 로봇과 기지국(엣지)을 하나의 대시보드에서 관제하는 통합 시스템입니다.
-중앙 허브가 미션을 브로드캐스트하면 기지국이 이를 중계하고, 각 로봇의 제어 노드가
-조건을 평가해 수락/거절한 뒤 실행합니다. RSSI 기반 기지국 핸드오버와 서버 단절 시
-자동 fallback을 지원합니다.
+여러 대의 로봇과 기지국(엣지)을 관제하는 **플랫폼/관리 기능**입니다. 중앙 허브,
+기지국·로봇 노드 서비스, k3s 배포 매니페스트, 운영 스크립트, 그리고 로봇과의
+[제어 프로토콜](protocol/PROTOCOL.md)을 담습니다. 중앙 허브가 미션을 브로드캐스트하면
+기지국이 중계하고, 각 로봇의 제어 노드가 조건을 평가해 수락/거절한 뒤 실행합니다.
+RSSI 기반 기지국 핸드오버와 서버 단절 시 자동 fallback을 지원합니다.
+
+> 이 브랜치는 모노레포를 책임별로 분리한 `admin` 브랜치입니다.
+> 로봇 SDK/제어 어댑터는 `robot-image`, 대시보드 UI는 `ui` 브랜치를 참조하세요.
+> 관리자는 이 프로토콜과 노드만 관리하고, 로봇 담당자는 프로토콜을 지키는 어댑터를
+> 자유 SDK로 구현합니다.
 
 ## 구성
 
 | 경로 | 설명 |
 | --- | --- |
-| `apps/central-hub` | FastAPI 기반 중앙 허브. REST/WebSocket API, MQTT/Redis 연동, React SPA 서빙 |
-| `apps/brain-ep01/*` | EP01 로봇용 링크 프록시와 작업 워커(주행/비전) |
-| `services/mission-listener` | 제어용 RPi. 미션 수신 → 조건 평가 → accept/reject → 실행 |
+| `apps/central-hub` | FastAPI 기반 중앙 허브. REST/WebSocket API, MQTT/Redis 연동, SPA 서빙 |
+| `services/mission-listener` | 제어용 RPi. 미션 수신 → 조건 평가 → accept/reject → 명령 큐 발행 |
 | `services/edge-gateway` | 기지국 RPi. 허브 미션을 로봇에 브로드캐스트하고 결과를 중계 |
 | `services/rssi_collector` | 기지국에서 로봇 AP의 RSSI를 스캔·평활화해 Redis에 기록 |
 | `services/handover_controller` | RSSI를 비교해 더 강한 기지국으로 핸드오버 트리거 |
 | `services/fallback_controller` | 서버 단절 감지 시 `last-mission.json` 자동 실행 |
 | `deploy/*` | k3s 배포용 Kubernetes 매니페스트와 ConfigMap |
-| `ui-spa` | Vite + React 프런트엔드(대시보드, 미션 빌더, 로그, Config) |
 | `scripts/*` | 배포, 점검, 테스트, 정리용 셸 스크립트 |
+| `protocol/*` | 로봇 어댑터와의 SDK 독립 제어 프로토콜(계약) 문서·스키마 |
 | `tools/config_loader.py` | `config.yaml`을 점 표기법(`network.redis_host`)으로 읽는 공용 로더 |
 
 ## 메시지 흐름
@@ -118,13 +123,12 @@ bash scripts/run_all.sh
 | `99_cleanup.sh` | 배포 리소스 정리 |
 | `run_all.sh` | `00`~`04` + `07`을 한 번에 실행 |
 
-### 프런트엔드 빌드
+### 프런트엔드 (선택)
 
-```bash
-cd ui-spa
-npm install
-npm run build                          # 산출물: ui-spa/dist (허브가 서빙)
-```
+대시보드 UI는 `ui` 브랜치로 분리되어 있으며 부가 기능입니다. UI 없이도 허브 API
+(`/api/*`)로 관제가 가능합니다. UI를 함께 서빙하려면 `ui` 브랜치에서 빌드한
+`ui-spa/dist`를 허브의 `ui-spa/dist` 경로에 배치하세요. 없으면 허브는 안내 페이지를
+반환합니다.
 
 ## Mock 모드
 
