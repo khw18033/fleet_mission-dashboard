@@ -47,6 +47,9 @@ class MockRedis:
     def lpush(self, key, value):
         self._lists.setdefault(key, []).insert(0, value)
 
+    def rpush(self, key, value):
+        self._lists.setdefault(key, []).append(value)
+
     def exists(self, key):
         return key in self._strings or key in self._lists
 
@@ -115,12 +118,14 @@ def execute_fallback(mission: dict) -> None:
             log.info("서버 재연결 감지 — Fallback 중단")
             break
         cmd = {
+            "id":     f"{mission_id}:{idx}",   # ack 상관관계용 (protocol v1)
             "target": node.get("target"),
             "action": node.get("action"),
             "params": node.get("params", {}),
         }
         try:
-            r.lpush(REDIS_CMD_KEY, json.dumps(cmd))
+            # protocol v1: FIFO 보장을 위해 RPUSH (소비자는 BLPOP)
+            r.rpush(REDIS_CMD_KEY, json.dumps(cmd))
             log.info(f"  Fallback [{idx+1}/{len(nodes)}] {cmd['target']}.{cmd['action']}")
         except Exception as e:
             log.error(f"  Fallback LPUSH 실패: {e}")

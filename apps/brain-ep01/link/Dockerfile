@@ -26,7 +26,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # 런타임 설정/유틸 + 소스 코드 복사
 COPY tools/ ./tools/
-COPY config.yaml ./config.yaml
 COPY apps/brain-ep01/link/link_proxy.py .
 
 # Flask API를 제거하고 Redis를 사용하므로 5000번 포트 개방은 더 이상 필요 없습니다.

@@ -9,7 +9,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ui-spa/dist/ ./ui-spa/dist/
 
 COPY tools/ ./tools/
-COPY config.yaml .
 COPY apps/central-hub/ ./apps/central-hub/
 
 ENV PYTHONUNBUFFERED=1

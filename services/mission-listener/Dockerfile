@@ -7,7 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY services/mission-listener/listener.py .
 COPY tools/ ./tools/
-COPY config.yaml ./config.yaml
 
 ENV PYTHONUNBUFFERED=1
 

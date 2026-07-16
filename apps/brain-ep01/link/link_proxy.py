@@ -152,6 +152,9 @@ CMD_KEY = f"robot:{ROBOT_ID}:commands"
 STATUS_KEY = f"robot:{ROBOT_ID}:status"
 EVT_PREFIX = f"robot:{ROBOT_ID}:event"
 ONLINE_KEY = f"robot:{ROBOT_ID}:online"
+RESULT_KEY = f"robot:{ROBOT_ID}:cmd_result"   # 명령 결과(ack) 채널 (protocol v1)
+RESULT_MAX = 100                              # 최근 N건만 유지
+PROTOCOL_SCHEMA = 1
 
 ARMOR_POS = {1: "back", 2: "front", 3: "left", 4: "right"}
 
@@ -172,6 +175,8 @@ try:
             def set(self, key, value, ex=None): self._strings[key] = value
             def delete(self, key): self._strings.pop(key, None); self._hashes.pop(key, None)
             def blpop(self, key, timeout=0): return None
+            def rpush(self, key, value): self._lists.setdefault(key, []).append(value)
+            def ltrim(self, key, start, end): return True
             def pubsub(self):
                 class _PS:
                     def subscribe(self, *args, **kwargs): return None
@@ -212,10 +217,35 @@ class RobotLinkProxy:
         except Exception as e:
             log.debug(f"publish 실패 ({event_type}): {e}")
 
+    def _write_meta(self):
+        # 확장 필드 규약: 핵심 메타데이터(_meta)를 status 해시에 유지한다.
+        self._hset("_meta", {
+            "robot_type": ROBOT_TYPE,
+            "schema": PROTOCOL_SCHEMA,
+            "ts": time.time(),
+        })
+
+    def _ack(self, cmd: dict, status: str, error: str = None):
+        # 명령 결과(ack)를 protocol v1 채널에 기록. 최근 RESULT_MAX건만 유지.
+        try:
+            r.rpush(RESULT_KEY, json.dumps({
+                "id":     cmd.get("id", ""),
+                "target": cmd.get("target", ""),
+                "action": cmd.get("action", ""),
+                "status": status,
+                "error":  error,
+                "ts":     time.time(),
+            }))
+            r.ltrim(RESULT_KEY, -RESULT_MAX, -1)
+            r.expire(RESULT_KEY, STATUS_TTL)
+        except Exception as e:
+            log.debug(f"ack 기록 실패: {e}")
+
     def heartbeat_loop(self):
         while True:
             try:
                 r.set(ONLINE_KEY, "1", ex=OFFLINE_TIMEOUT)
+                self._write_meta()
             except Exception as e:
                 log.debug(f"heartbeat 실패: {e}")
             time.sleep(max(1, OFFLINE_TIMEOUT // 2))
@@ -335,11 +365,15 @@ class RobotLinkProxy:
 
             else:
                 log.warning(f"알 수 없는 target: {target}")
+                self._ack(cmd, "error", f"unknown target: {target}")
+                return
 
             log.info(f"{target}.{action} 완료")
+            self._ack(cmd, "ok")
 
         except Exception as e:
             log.error(f"{target}.{action} 실패: {e}", exc_info=True)
+            self._ack(cmd, "error", str(e))
 
     def _exec_flow(self, action: str, cmd: dict):
         if action == "REPEAT":

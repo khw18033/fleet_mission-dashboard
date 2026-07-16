@@ -9,7 +9,6 @@ COPY services/rssi_collector/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY tools/ ./tools/
-COPY config.yaml .
 COPY services/rssi_collector/rssi_collector.py .
 
 ENV PYTHONUNBUFFERED=1

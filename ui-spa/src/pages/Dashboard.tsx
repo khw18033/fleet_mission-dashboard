@@ -152,6 +152,11 @@ export default function Dashboard() {
             {robots.map((robot) => {
               const battery = robot.battery?.soc ?? 0
               const batteryBarTone = battery > 50 ? 'from-emerald-400 to-emerald-500' : battery > 20 ? 'from-amber-400 to-amber-500' : 'from-rose-400 to-rose-500'
+              // 확장 필드 규약: position/speed/armor 등은 telemetry 통과 딕셔너리에서 읽는다.
+              const telemetry = robot.telemetry ?? {}
+              const position = telemetry.position
+              const speed = telemetry.speed
+              const armor = telemetry.armor
               return (
                 <div key={robot.robot_id} className={`rounded-2xl border p-4 ${robot.online ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-white/10 bg-[#121521]'}`}>
                   <div className="flex items-start justify-between gap-3">
@@ -175,14 +180,14 @@ export default function Dashboard() {
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-[#d7dbec]">
-                    <div className="rounded-lg bg-white/5 p-2">x: <span className="font-mono">{robot.position?.x?.toFixed(2) ?? '-'}</span></div>
-                    <div className="rounded-lg bg-white/5 p-2">y: <span className="font-mono">{robot.position?.y?.toFixed(2) ?? '-'}</span></div>
-                    <div className="rounded-lg bg-white/5 p-2 col-span-2">속도: <span className="font-mono">{robot.speed?.speed !== undefined ? `${robot.speed.speed.toFixed(2)} m/s` : '-'}</span></div>
+                    <div className="rounded-lg bg-white/5 p-2">x: <span className="font-mono">{position?.x?.toFixed(2) ?? '-'}</span></div>
+                    <div className="rounded-lg bg-white/5 p-2">y: <span className="font-mono">{position?.y?.toFixed(2) ?? '-'}</span></div>
+                    <div className="rounded-lg bg-white/5 p-2 col-span-2">속도: <span className="font-mono">{speed?.speed !== undefined ? `${speed.speed.toFixed(2)} m/s` : '-'}</span></div>
                   </div>
 
-                  {robot.armor?.id ? (
+                  {armor?.id ? (
                     <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200 font-medium">
-                      장갑 타격 경고 · {robot.armor.position ?? '-'} (id={robot.armor.id})
+                      장갑 타격 경고 · {armor.position ?? '-'} (id={armor.id})
                     </div>
                   ) : null}
 

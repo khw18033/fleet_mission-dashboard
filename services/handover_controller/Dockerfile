@@ -3,7 +3,6 @@ WORKDIR /app
 COPY services/handover_controller/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY tools/ ./tools/
-COPY config.yaml .
 COPY services/handover_controller/handover_controller.py .
 ENV PYTHONUNBUFFERED=1
 CMD ["python", "handover_controller.py"]

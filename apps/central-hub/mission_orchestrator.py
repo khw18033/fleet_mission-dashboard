@@ -347,22 +347,24 @@ def _build_dashboard() -> dict:
         except Exception as e:
             result["nodes_error"] = str(e)
 
-    # 로봇 상태
+    # 로봇 상태 — 확장 필드 규약(protocol/PROTOCOL.md 참조).
+    # status 해시의 모든 필드를 로봇 종류와 무관하게 그대로 통과시킨다.
+    # battery/_meta 만 핵심 필드로 취급하고, 나머지는 telemetry로 노출하므로
+    # 로봇이 새 필드를 추가해도 허브 코드 변경 없이 대시보드에 전달된다.
     try:
         for key in r.keys("robot:*:status"):
             sn  = key.split(":")[1]
             raw = r.hgetall(key)
             if not raw: continue
             online_key = f"robot:{sn}:online"
+            telemetry = {field: _safe_json(val) for field, val in raw.items()}
+            meta = telemetry.get("_meta") or {}
             result["robots"].append({
                 "robot_id":  sn,
+                "robot_type": meta.get("robot_type", ""),
                 "online":    bool(r.exists(online_key)),
-                "battery":   json.loads(raw.get("battery",  "{}")),
-                "position":  json.loads(raw.get("position", "{}")),
-                "speed":     json.loads(raw.get("speed",    "{}")),
-                "imu":       json.loads(raw.get("imu",      "{}")),
-                "armor":     json.loads(raw.get("armor",    "{}")),
-                "esc_rpm":   json.loads(raw.get("esc_rpm",  "{}")),
+                "battery":   telemetry.get("battery") or {},
+                "telemetry": telemetry,          # 확장 필드 전체 통과
                 "current_mission": _safe_json(r.get(f"fleet:cache:{sn}")),
             })
     except Exception as e:

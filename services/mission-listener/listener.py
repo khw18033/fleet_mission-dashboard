@@ -53,6 +53,9 @@ class MockRedis:
     def lpush(self, key, value):
         self._lists.setdefault(key, []).insert(0, value)
 
+    def rpush(self, key, value):
+        self._lists.setdefault(key, []).append(value)
+
     def set(self, key, value, ex=None):
         self._strings[key] = value
 
@@ -183,13 +186,15 @@ def execute_mission(client: mqtt.Client, payload: dict, start_from: int = 0):
             }
 
         cmd = {
+            "id":     f"{mission_id}:{idx}",   # 명령 결과(ack) 상관관계용 (protocol v1)
             "target": node.get("target"),
             "action": node.get("action"),
             "params": node.get("params", {}),
         }
         if r:
             try:
-                r.lpush(REDIS_CMD_KEY, json.dumps(cmd))
+                # protocol v1: FIFO 보장을 위해 RPUSH (소비자는 BLPOP)
+                r.rpush(REDIS_CMD_KEY, json.dumps(cmd))
                 log.info(f"  [{idx+1}/{total}] {cmd['target']}.{cmd['action']}")
             except Exception as e:
                 log.error(f"  Redis LPUSH 실패: {e}")
