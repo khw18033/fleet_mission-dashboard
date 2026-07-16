@@ -120,8 +120,21 @@ bash scripts/run_all.sh
 | `10_e2e_robot_test.sh` | 실제 로봇 대상 종단 간(E2E) 테스트 |
 | `12_debug_webui_mission.sh` | 미션 배포 경로 단계별 디버깅 |
 | `13_test_handover.sh` | RSSI 기반 핸드오버 시나리오 테스트 |
+| `submit_mission.sh` | JSON 미션 문서를 노드 라벨/이름으로 타깃팅해 허브에 제출 |
 | `99_cleanup.sh` | 배포 리소스 정리 |
 | `run_all.sh` | `00`~`04` + `07`을 한 번에 실행 |
+
+## 미션 제출 (JSON 문서)
+
+UI 없이 JSON 문서로 미션을 정의하고 **노드 라벨**로 타깃팅해 배포할 수 있습니다.
+문서 형식과 사용법은 [`missions/README.md`](missions/README.md) 참조.
+
+```bash
+# 노드 라벨의 노드들로 타깃팅 (라벨 → 노드명 자동 해석)
+bash scripts/submit_mission.sh missions/example.mission.json --node-label node-role=robot
+# 노드/기지국 이름 직접 지정
+bash scripts/submit_mission.sh missions/example.mission.json --stations pi3,pi4
+```
 
 ### 프런트엔드 (선택)
 

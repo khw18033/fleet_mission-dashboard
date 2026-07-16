@@ -1,0 +1,16 @@
+{
+  "mission_name": "patrol-01",
+  "conditions": {
+    "robot_type": "ep01",
+    "robot_online": true,
+    "min_battery": 20,
+    "max_latency_ms": 9999
+  },
+  "target_stations": [],
+  "nodes": [
+    { "target": "chassis", "action": "MOVE",   "params": { "x": 1.0, "y": 0.0, "speed": 0.5 }, "delay_sec": 1 },
+    { "target": "led",     "action": "SET",    "params": { "r": 0, "g": 255, "b": 0, "eff": "on" } },
+    { "target": "chassis", "action": "ROTATE", "params": { "yaw": 90, "v_speed": 45 }, "delay_sec": 1 },
+    { "target": "chassis", "action": "STOP",   "params": {} }
+  ]
+}
