@@ -16,7 +16,7 @@
 #   HUB_URL   허브 주소 직접 지정 (기본: central-hub Pod hostIP:node_port)
 #
 # 예시:
-#   bash scripts/submit_mission.sh missions/example.mission.json --node-label node-role=robot
+#   bash scripts/submit_mission.sh missions/example.mission.json --node-label node-role=edge
 #   bash scripts/submit_mission.sh missions/example.mission.json --stations pi3,pi4
 #   HUB_URL=http://localhost:5001 bash scripts/submit_mission.sh missions/example.mission.json
 set -euo pipefail
